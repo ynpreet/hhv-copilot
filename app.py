@@ -50,6 +50,17 @@ def _capture_fn(fn, params):
     except Exception as exc:  # never crash the page on a bad input
         return "[web-ui] The personalized run hit an error and stopped safely.\n%s: %s" % (type(exc).__name__, exc)
 
+# _capture_custom: personalized handlers may return a dict carrying a follow-up decision.
+def _capture_custom(fn, params):
+    try:
+        res = fn(params)
+    except Exception as exc:  # never crash the page on a bad input
+        return {"output": "[web-ui] The personalized run hit an error and stopped safely.", "decision": None}
+    if isinstance(res, dict):
+        res.setdefault("decision", None)
+        return res
+    return {"output": res, "decision": None}
+
 # ---- personalized run: input handling lives in app.py; demo.py untouched ----
 
 _HHV = {}
@@ -203,7 +214,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         path = urllib.parse.urlsplit(self.path).path
         if path == "/api/custom":
             params = self._read_json()
-            self._json({"output": _capture_fn(run_custom, params)})
+            self._json(_capture_custom(run_custom, params))
 
         elif path == "/api/filter":
             length = int(self.headers.get("Content-Length", 0))
