@@ -1,0 +1,3 @@
+# HHV Copilot — stdlib only.
+# demo.py uses pure Python standard library and needs nothing installed.
+# There are no requirements. (No pip install step — see README.)
