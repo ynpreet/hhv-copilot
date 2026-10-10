@@ -69,6 +69,54 @@ SCREENING_POOL = ["Colorectal cancer screening", "Breast cancer screening",
                   "Diabetic eye exam", "Bone density scan",
                   "Annual wellness visit"]
 
+# Variety pools for the post-generation swap pass. These NEVER change counts,
+# ages, scores, or any other field -- only some labels/names get variety, via
+# a separate seeded stream so the main registry stays byte-identical.
+SWAP_CONDITIONS = ["Osteoporosis", "Chronic Pain", "Anxiety", "Sleep Apnea",
+                   "GERD", "Anemia"]
+SWAP_FIRST_NAMES = ["Helen", "Ruth", "Eleanor", "Frank", "Harold", "Arthur",
+                    "Mildred", "Frances", "Albert", "Virginia", "Ralph",
+                    "Eugene"]
+SWAP_LAST_NAMES = ["Baker", "Adams", "Nelson", "Carter", "Mitchell", "Perez",
+                   "Roberts", "Turner", "Phillips", "Campbell", "Parker",
+                   "Edwards"]
+SWAP_SCREENINGS = ["Lung cancer screening",
+                   "Abdominal aortic aneurysm screening"]
+
+
+def apply_variety_swap(members):
+    """Swap some condition/screening labels and names for variety.
+
+    Uses a SEPARATE seeded stream (SEED+1): the main registry's draws are
+    untouched, so every count, age, score, and baked UI hint is unchanged.
+    The featured deep-dive member is never touched.
+    """
+    rng = random.Random(SEED + 1)
+    for m in members:
+        if m["member_id"] == FEATURED_ID:
+            continue
+        conds = m["conditions"]
+        if conds and rng.random() < 0.35:
+            idx = rng.randrange(len(conds))
+            cand = rng.choice(SWAP_CONDITIONS)
+            if cand not in conds:
+                conds[idx] = cand
+                m["conditions"] = sorted(conds)
+        first, _, last = m["name"].partition(" ")
+        if rng.random() < 0.45:
+            first = rng.choice(SWAP_FIRST_NAMES)
+        if rng.random() < 0.45:
+            last = rng.choice(SWAP_LAST_NAMES)
+        m["name"] = first + " " + last
+        ms = m["missing_screenings"]
+        if ms and rng.random() < 0.25:
+            idx = rng.randrange(len(ms))
+            cand = rng.choice(SWAP_SCREENINGS)
+            if cand not in ms:
+                ms[idx] = cand
+                m["missing_screenings"] = sorted(ms)
+    return members
+
 
 def generate_registry(n=1000):
     """Generate n SYNTHETIC member records. Deterministic via fixed seed."""
@@ -809,7 +857,8 @@ def run_demo():
     print("[ORCHESTRATOR] Loading the synthetic registry.")
     tool("load_registry", "n=1000, seed=%d" % SEED,
          "1,000 synthetic members loaded. All fictional.")
-    registry = apply_featured_override(generate_registry(1000))
+    registry = apply_variety_swap(
+        apply_featured_override(generate_registry(1000)))
 
     print()
     print("[ORCHESTRATOR] Identifying members who may benefit — need-based "
