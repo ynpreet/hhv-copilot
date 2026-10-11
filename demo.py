@@ -407,7 +407,10 @@ def classify_finding(raw):
     care_gap        = missing expected care (not a diagnosis, an absence)
     """
     r = raw.lower()
-    if raw.startswith("Member states:"):
+    # Member-report attribution always wins: a stated symptom is never
+    # "verified" just because the sentence contains words like
+    # "confirmed"/"measured" (e.g. "No diagnosis confirmed.").
+    if raw.startswith("Member states:") or r.startswith("member reports"):
         return "reported"
     if r.startswith("gap:"):
         return "care_gap"
@@ -420,7 +423,7 @@ def needs_clinician_review(raw, klass):
     """Flag findings a clinician must interpret. Deterministic rules."""
     r = raw.lower()
     if klass == "reported" and any(k in r for k in
-                                   ["dizzy", "pill", "medicat", "chest",
+                                   ["dizz", "pill", "medicat", "chest",
                                     "breath"]):
         return True
     if "152/94" in raw:
@@ -480,7 +483,7 @@ def validate_protocols(findings):
             results.append((f["id"], "Single in-home BP >= 140/90 -> protocol: "
                             "repeat per protocol at PCP visit; PCP "
                             "interprets. NOT a new diagnosis."))
-        elif "dizzy" in t.lower():
+        elif klass == "reported" and "dizz" in t.lower():
             results.append((f["id"], "Reported dizziness -> protocol: "
                             "orthostatic vitals + fall-risk assessment; "
                             "cause UNDETERMINED — clinician review required, "
